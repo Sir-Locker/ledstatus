@@ -10,10 +10,16 @@ const int led_green = 17;
 const int led_blue = 16;
 const int buttonpin = 36;
 int statusled = 0;
+int pcard = 0;
 
 uint8_t MacAddress4[] = {0x3C, 0x61, 0x05, 0x03, 0xCA, 0x04};
 uint8_t MacAddress3[] = {0x24, 0x6F, 0x28, 0x28, 0x17, 0x1C};
+uint8_t MacAddress2[] = {0xE8, 0x68, 0xE7, 0x23, 0x82, 0x1C};
 
+
+typedef struct card_status{
+  int cardstat; // 0 ผิด 1 ถูก
+}card_status;
 
 typedef struct led_status{
   int statuss; // 0 close 1 true 2 worng 3register
@@ -25,9 +31,11 @@ typedef struct servo_struct{
 
 servo_struct servoled;
 led_status led;
+card_status card; 
 
 esp_now_peer_info_t peerInfo1;
 esp_now_peer_info_t peerInfo2;
+esp_now_peer_info_t peerInfo3;
 
 bool compareMac(const uint8_t * a, uint8_t * b){
   for(int i=0;i<6;i++){
@@ -78,6 +86,18 @@ void OnDataRecv(const uint8_t * mac_addr, const uint8_t *incomingData, int len) 
         analogWrite(5,0);
         analogWrite(17,255);
         analogWrite(16,0);
+      }
+   }
+
+    if(compareMac(mac_addr,MacAddress2)){
+      Serial.println("revice card status");
+      memcpy(&card, incomingData, sizeof(card));
+      pcard = card.cardstat;
+      if(pcard == 1){
+        Serial.println("Pass is Correct");
+      }
+      if(pcard == 0){
+        Serial.println("wongpass");
       }
    }
 }
