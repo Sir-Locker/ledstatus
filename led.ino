@@ -8,11 +8,12 @@
 const int led_red = 5;
 const int led_green = 17;
 const int led_blue = 16;
-const int buttonpin = 36;
 int statusled = 0;
+int pcard;
 
-uint8_t MacAddress4[] = {0x3C, 0x61, 0x05, 0x03, 0xCA, 0x04};
-uint8_t MacAddress3[] = {0x24, 0x6F, 0x28, 0x28, 0x17, 0x1C};
+uint8_t MacAddress1[] = {0x3C, 0x61, 0x05, 0x03, 0xCA, 0x04}; // pin
+uint8_t MacAddress2[] = {0x24, 0x6F, 0x28, 0x28, 0x17, 0x1C}; // servo
+uint8_t MacAddress3[] = {0xE8, 0x68, 0xE7, 0x23, 0x82, 0x1C}; // card
 
 
 typedef struct led_status{
@@ -23,11 +24,17 @@ typedef struct servo_struct{
   int servo_status;//1 = lock, 0 = unlock
 } servo_struct;
 
+typedef struct card_status{
+  int cardstat; // 0 ผิด 1 ถูก
+}card_status;
+
 servo_struct servoled;
 led_status led;
+card_status card;
 
 esp_now_peer_info_t peerInfo1;
 esp_now_peer_info_t peerInfo2;
+esp_now_peer_info_t peerInfo3;
 
 bool compareMac(const uint8_t * a, uint8_t * b){
   for(int i=0;i<6;i++){
@@ -44,8 +51,9 @@ void OnDataRecv(const uint8_t * mac_addr, const uint8_t *incomingData, int len) 
            mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
   Serial.println(macStr);
   //receive data
-  if(compareMac(mac_addr,MacAddress4)){
+  if(compareMac(mac_addr,MacAddress1) ){
      memcpy(&led, incomingData, sizeof(led));
+     Serial.println("In Pinmode");
      statusled = led.statuss;
      if(statusled == 0){
         analogWrite(5,0);
@@ -65,7 +73,7 @@ void OnDataRecv(const uint8_t * mac_addr, const uint8_t *incomingData, int len) 
         analogWrite(16,255);
        }
   }
-   if(compareMac(mac_addr,MacAddress3)){
+   if(compareMac(mac_addr,MacAddress2)){
       Serial.println("IN");
       memcpy(&servoled, incomingData, sizeof(servoled));
       statusled = servoled.servo_status;
@@ -77,6 +85,23 @@ void OnDataRecv(const uint8_t * mac_addr, const uint8_t *incomingData, int len) 
       if(statusled == 0){
         analogWrite(5,0);
         analogWrite(17,255);
+        analogWrite(16,0);
+      }
+   }
+   if(compareMac(mac_addr,MacAddress2)){
+      Serial.println("revice card status");
+      memcpy(&card, incomingData, sizeof(card));
+      pcard = card.cardstat;
+      if(pcard == 1){
+        Serial.println("Pass is Correct");
+        analogWrite(5,0);
+        analogWrite(17,255);
+        analogWrite(16,0);
+      }
+      if(pcard == 0){
+        Serial.println("wongpass");
+        analogWrite(5,255);
+        analogWrite(17,0);
         analogWrite(16,0);
       }
    }
@@ -96,24 +121,33 @@ void setup() {
 
   esp_now_register_recv_cb(OnDataRecv);
 
-  memcpy(peerInfo1.peer_addr, MacAddress4, 6);
+  memcpy(peerInfo1.peer_addr, MacAddress1, 6);
   peerInfo1.channel = 0;  
   peerInfo1.encrypt = false;
   if (esp_now_add_peer(&peerInfo1) != ESP_OK){
     Serial.println("Failed to add peer");
     return;
   }
-  memcpy(peerInfo2.peer_addr, MacAddress3, 6);
+  
+  memcpy(peerInfo2.peer_addr, MacAddress2, 6);
   peerInfo2.channel = 0;  
   peerInfo2.encrypt = false;
   if (esp_now_add_peer(&peerInfo2) != ESP_OK){
     Serial.println("Failed to add peer");
     return;
   }
+
+  memcpy(peerInfo3.peer_addr, MacAddress3, 6);
+  peerInfo3.channel = 0;  
+  peerInfo3.encrypt = false;
+  if (esp_now_add_peer(&peerInfo3) != ESP_OK){
+    Serial.println("Failed to add peer");
+    return;
+  }
+  
   pinMode(led_red, OUTPUT);
   pinMode(led_blue,OUTPUT);
   pinMode(led_green,OUTPUT);
-  pinMode(buttonpin,INPUT_PULLUP);
 }
 
 void loop() {
