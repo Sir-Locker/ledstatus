@@ -9,14 +9,17 @@ const int led_red = 5;
 const int led_green = 17;
 const int led_blue = 16;
 int statusled = 0;
+int pcard;
+const int buzzerPin = 22;
+const int frequency1 = 1000;  
+const int frequency2 = 2000;  
+const int frequency3 = 3000;
+int feq = 1000;
 
-uint8_t MacAddress4[] = {0x3C, 0x61, 0x05, 0x03, 0xCA, 0x04};
-uint8_t MacAddress3[] = {0x24, 0x6F, 0x28, 0x28, 0x17, 0x1C};
+uint8_t MacAddress1[] = {0x3C, 0x61, 0x05, 0x03, 0xCA, 0x04}; // pin
+uint8_t MacAddress2[] = {0x24, 0x6F, 0x28, 0x28, 0x17, 0x1C}; // servo
+uint8_t MacAddress3[] = {0xE8, 0x68, 0xE7, 0x23, 0x82, 0x1C}; // card
 
-
-typedef struct card_status{
-  int cardstat; // 0 ผิด 1 ถูก
-}card_status;
 
 typedef struct led_status{
   int statuss; // 0 close 1 true 2 worng 3register
@@ -32,6 +35,7 @@ typedef struct card_status{
 
 servo_struct servoled;
 led_status led;
+card_status card;
 
 esp_now_peer_info_t peerInfo1;
 esp_now_peer_info_t peerInfo2;
@@ -64,29 +68,61 @@ void OnDataRecv(const uint8_t * mac_addr, const uint8_t *incomingData, int len) 
         analogWrite(5,0);
         analogWrite(17,255);
         analogWrite(16,0);
+        tone(buzzerPin, frequency1);
+        delay(1000);
+        noTone(buzzerPin);
        }else if(statusled == 2 ){
         analogWrite(5,255);
         analogWrite(17,0);
         analogWrite(16,0);
+        tone(buzzerPin, frequency2);
+        delay(1000);
+        noTone(buzzerPin);
        }else if(statusled == 3){
         analogWrite(5,0);
         analogWrite(17,0);
         analogWrite(16,255);
+        tone(buzzerPin, frequency3);
+        delay(1000);
+        noTone(buzzerPin);
        }
   }
    if(compareMac(mac_addr,MacAddress2)){
       Serial.println("IN");
       memcpy(&servoled, incomingData, sizeof(servoled));
       statusled = servoled.servo_status;
-      if(statusled == 1){
+      if(statusled == 0){
         analogWrite(5,0);
         analogWrite(17,0);
         analogWrite(16,0);
       }
-      if(statusled == 0){
+      if(statusled == 1){
         analogWrite(5,0);
         analogWrite(17,255);
         analogWrite(16,0);
+      }
+   }
+   if(compareMac(mac_addr,MacAddress2)){
+      Serial.println("revice card status");
+      memcpy(&card, incomingData, sizeof(card));
+      pcard = card.cardstat;
+      if(pcard == 1){
+        Serial.println("Pass is Correct");
+        analogWrite(5,0);
+        analogWrite(17,255);
+        analogWrite(16,0);
+        tone(buzzerPin, frequency1);
+        delay(1000);
+        noTone(buzzerPin);
+      }
+      if(pcard == 0){
+        Serial.println("wongpass");
+        analogWrite(5,255);
+        analogWrite(17,0);
+        analogWrite(16,0);
+        tone(buzzerPin, frequency2);
+        delay(1000);
+        noTone(buzzerPin);
       }
    }
 }
@@ -132,6 +168,8 @@ void setup() {
   pinMode(led_red, OUTPUT);
   pinMode(led_blue,OUTPUT);
   pinMode(led_green,OUTPUT);
+  pinMode(buzzerPin, OUTPUT);
+  tone(buzzerPin,1000,3000);
 }
 
 void loop() {
